@@ -42,7 +42,7 @@ void Compressor::createFormatString(char *format, int n) {
 
 void Compressor::compress(char *sourceFileName) {
     // create a name for the target file
-    char targetFileName[strlen(sourceFileName) + 5];
+    char targetFileName[strlen(sourceFileName) + 6];
     createTargetFileName(targetFileName, sourceFileName);
 
     // open the source and target files
@@ -53,8 +53,8 @@ void Compressor::compress(char *sourceFileName) {
     /* using Trie as a table for fast lookup O(pattern_size), instead of an array of strings */
 
     // iter is used to avoid emptying trie every time number of symbols == TABLE_SIZE
-    // when iter becomes max value of unsigned int, i.e (1u << 16) - 1, then we have to empty the trie
-    // this is needed, otherwise if we dont empty the trie, then memory requirement may become too high
+    // when iter becomes MAX_ITER, then we have to empty the trie
+    //**// this is needed, otherwise if we dont empty the trie, then memory requirement may become too high
     unsigned iter = 0;
     unsigned numberOfTrieNodes = 1 + MAXCHARS;      // root node + its children nodes
 
@@ -82,7 +82,7 @@ void Compressor::compress(char *sourceFileName) {
         
         // create buffer for writing into target file
         // uInt12Node is used for storing 12-bit integers
-        uInt12Node printBuffer[BUFF_SIZE];      // the actual number of symbols in printBuffer will always be < BUFF_SIZE
+        uInt12Node printBuffer[BUFF_SIZE];      // the actual number of symbols in printBuffer will always be < BUFF_SIZE, dur to compression
         
         // stores size of scan and print buffers
         int scanBufferSize, printBufferSize;
@@ -96,11 +96,13 @@ void Compressor::compress(char *sourceFileName) {
 				ch = scanBuffer[i];        	
 			
 	          	// if the pattern was found, then curr will move to 'pattern + ch' in the trie
-	            // else it will move to character ch in the trie;
+	            // else it will move to character ch in the trie, in case 'pattern + ch' does not exist in the trie
+                // if the below condition is true, then we need to add new pattern to the trie
+                // we have to either create a new node in the trie, or update a previous node with new iter value
 	            if (curr->getChild(ch) == NULL || curr->getChild(ch)->getIter() != iter) {
 	                
                     // store the symbol for current pattern in printBuffer
-                    // only the index of last node of pattern is needed
+                    // the symbol is stored in the index entry of the node curr
 
                     // every pattern index is within [0, 4095], except root index which is -1
                     // root index is never needed to be stored
@@ -120,19 +122,19 @@ void Compressor::compress(char *sourceFileName) {
                         curr->getChild(ch)->setIter(iter);
 
                         // also set the index value, because the trie is changed, since iter values are different
+                        // because the symbol that was stored during previous iter value may be different
                         curr->getChild(ch)->setIndex(nextIndex);
                     } 
 
                     curr = trie.getRoot();             // move back to root of trie
 	                nextIndex++;
-
-	                // after end of this iteration of for loop we will be at root.getChild(ch)
-                    // i.e pattern will be initialized to ch
 	            }
 	            
 	            // if nextIndex == TABLE_SIZE, i.e the maximum number of patterns, then reinitialize trie and nextIndex
 	            // curr will now be at root of trie
-	            if (nextIndex == TABLE_SIZE) {
+	            // it may be possible that number of trie nodes become greater than MAX_NODES before nextIndex becomes TABLE_SIZE
+                // we can afford not emptying trie because number of nodes will be (MAX_NODES + TABLE_SIZE), and TABLE_SIZE is very small compared to MAX_NODES
+                if (nextIndex == TABLE_SIZE) {
                     iter++;
 
                     // emptying trie everytime is the bottelneck, so alternative is using variable iter
@@ -149,7 +151,7 @@ void Compressor::compress(char *sourceFileName) {
                         trie.emptyTrie();
                         trie.initTrie(iter);    // initialize all trieNodes with value of iter
                     }    
-	                
+	               
                     else      // no need to delete the whole trie, just update the child of root with iter value
                         trie.updateRootChildIterValue(iter);    
 
@@ -182,7 +184,4 @@ void Compressor::compress(char *sourceFileName) {
     fclose(targetFile);
 }
 
-
-// first adds two letter substrings, then three letter substrings and so on as
-// they occur in the text. Hence, compression ratio increases as the length of
-// text increases.
+// Compression ratio increases as the length of text increases, as more patterns are added to the table.

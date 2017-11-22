@@ -3,10 +3,9 @@
 
 #include "settings.h"
 
-
 // used for storing two 12 bit integers
-// first - all 8 bits of c1, and first 4 bits of c2
-// second - last 4 bits of c2 and all 8 bits of c3
+// first integer: all 8 bits of c1, and first 4 bits of c2
+// second integer: last 4 bits of c2 and all 8 bits of c3
 
 //		first 	     second	
 // --------  ----|----  --------

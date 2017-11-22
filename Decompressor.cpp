@@ -2,6 +2,7 @@
 #include <cstdio>
 #include "Decompressor.h"
 #include "uInt12.h"
+#include "SymbolTable.h"
 #include "settings.h"
 
 void Decompressor::createTargetFileName(char *targetFileName, char *sourceFileName) {
@@ -19,7 +20,7 @@ void Decompressor::createTargetFileName(char *targetFileName, char *sourceFileNa
 
 void Decompressor::decompress(char *sourceFileName) {
 	// create a name for the target file
-    char targetFileName[strlen(sourceFileName) + 4];
+    char targetFileName[strlen(sourceFileName) + 5];
     createTargetFileName(targetFileName, sourceFileName);
 
     // open the source and target files
@@ -38,6 +39,10 @@ void Decompressor::decompress(char *sourceFileName) {
 	// we need temp array because, two integers are stored together in uInt12
 	// and we need to access numbers in pairs, i.e. curr and next number
 	int temp[3];		// for storing values of integers in u1 and u2
+
+	// the Symbol table for storing patterns
+	// Symbol Table is added as a member function of Decompressor class, so that Decompressor::writeToFile() can also access it
+	// SymbolTable table;
 	
 	uInt12Node u1, u2;
 	// if file is not empty, start reading from it in pairs
@@ -73,13 +78,10 @@ void Decompressor::decompress(char *sourceFileName) {
 				// else, last is first char of node stored at "curr" in the table
 				// because the string represented by "next" is added in the end of this iteration, so it is not present at this moment
 				else 
-					last = table.getNodeFromArr(curr).getFirst();
+					last = first;
 
 				// insert the values in the table
 				table.insert(first, last, prevIndex);
-
-				// for reading the next pair, curr = next, and next will be read from source file
-				curr = next;
 
 				// if the table is full, reinitialize it by setting table.currIndex to MAXCHARS
 				if (table.getCurrIndex() == TABLE_SIZE)
@@ -89,7 +91,8 @@ void Decompressor::decompress(char *sourceFileName) {
 		}
 
 		manager = uInt12(u1);
-		// finally write the last remaining patterns to the file
+		// finally write the remaining patterns to the file
+		
 		writeToFile(targetFile, manager.getFirst());
 
 		// read count from "storeCount.temp" file
@@ -99,10 +102,20 @@ void Decompressor::decompress(char *sourceFileName) {
 		fscanf(fptr, "%d", &count);
 
 		// if there are two indexes stored in last uInt12
-		// first has already been written
-		// write the second one too.
-		if (count == 2)
-			writeToFile(targetFile, manager.getSecond());
+		// add the new pattern to symbol table and write the pattern corresponding to the second index in the target file
+		if (count == 2) {
+			int curr = manager.getFirst();
+			int next = manager.getSecond();
+			char first = table.getNodeFromArr(curr).getFirst();
+			int prevIndex = curr;
+			char last;
+			if (next < table.getCurrIndex())
+				last = table.getNodeFromArr(next).getFirst();
+			else
+				last = first;	
+			table.insert(first, last, prevIndex);		
+			writeToFile(targetFile, next);
+		}
 		fclose(fptr);
 	}
 
