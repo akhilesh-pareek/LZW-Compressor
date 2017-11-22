@@ -3,11 +3,17 @@
 
 #include "settings.h"
 
-// we need only first character, last character and previous index to generate string represented
-// by this node. 
-// e.g. "ana", where "a" - 97, "an" - 256, "ana" - 257
+// we need only the last char and prevIndex to generate the pattern
+// we need first char when we are adding a new node in the symbol table
+
+// {first, last, prevIndex}
+
+// e.g. for generation - "ana", where "a" - 97, "an" - 256, "ana" - 257
 // then if we store 256 with "ana", 97 with "an" and -1 with "a", then we can obtain "ana"
 // from index 257
+					
+// e.g. for inserting new node, "ab", where 97 - {"a", "a", -1} , 98 - {"b", "a", -1}
+// to add "ab" in symbol table, we insert {"a", "b", 97} in the symbol table.
 
 class SymbolTableNode {
 	char first;	 
@@ -25,7 +31,7 @@ public:
 
 
 class SymbolTable {
-	// MAXSYMBOL is defined in "settings.h"
+	// TABLE_SIZE is defined in "settings.h"
 	SymbolTableNode arr[TABLE_SIZE];		
 	
 	// the index where a new table node must be inserted

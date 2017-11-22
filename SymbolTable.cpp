@@ -26,13 +26,13 @@ int SymbolTableNode::getPrevIndex() {
 }
 
 
-
 // definitions for SymbolTable
 SymbolTable::SymbolTable() {
-	// this is the index from which new patterns must start filling the table
-	currIndex = MAXCHARS;	
 	for (int i=0; i<MAXCHARS; ++i)
 		arr[i] = SymbolTableNode((char)i, (char)i, -1);
+	
+	// this is the index from which new patterns must start filling the table
+	currIndex = MAXCHARS;	
 }
 
 int SymbolTable::getCurrIndex() {
